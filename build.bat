@@ -1,11 +1,39 @@
 @echo off
 setlocal
 
-:: Define the output directory and filename
+:: --- Configuration ---
 set "OUTPUT_DIR=builds"
-set "OUTPUT_FILENAME=tupm.exe"
+set "PROGRAM_NAME=tupm"
+set "TARGET_OS="
+set "GOOS_ENV="
+set "OUTPUT_FILENAME="
 
-:: 1. Create the output directory if it doesn't exist
+:: --- Handle Input Argument ---
+if "%1" == "" (
+    set "TARGET_OS=windows"
+) else if /i "%1" == "windows" (
+    set "TARGET_OS=windows"
+) else if /i "%1" == "linux" (
+    set "TARGET_OS=linux"
+) else (
+    echo Error: Invalid target '%1'.
+    echo Usage: %~n0 [target]
+    echo   target: windows (Default) or linux
+    goto :error
+)
+
+:: --- Set Go Build Environment Variables ---
+if /i "%TARGET_OS%" == "windows" (
+    set "GOOS_ENV=windows"
+    set "OUTPUT_FILENAME=%PROGRAM_NAME%.exe"
+) else (
+    set "GOOS_ENV=linux"
+    set "OUTPUT_FILENAME=%PROGRAM_NAME%"
+)
+
+:: --- Compilation Steps ---
+
+:: 1. Create the output directory
 echo Checking and creating output directory: %OUTPUT_DIR%
 if not exist "%OUTPUT_DIR%" (
     mkdir "%OUTPUT_DIR%"
@@ -15,16 +43,20 @@ if not exist "%OUTPUT_DIR%" (
     )
 )
 
-:: 2. Compile the Go program (assuming the main package is in the current directory)
-echo Compiling Go program to %OUTPUT_DIR%\%OUTPUT_FILENAME%
+:: 2. Compile the Go program
+echo Compiling for %TARGET_OS% (GOOS=%GOOS_ENV%) to %OUTPUT_DIR%\%OUTPUT_FILENAME%
+
+:: The core cross-compilation command using GOOS
+set GOOS=%GOOS_ENV%
 go build -o "%OUTPUT_DIR%\%OUTPUT_FILENAME%" .
+set GOOS= :: Clear GOOS environment variable after compilation
 
 :: 3. Check the compilation status
 if errorlevel 1 (
     echo ❌ Error: Go compilation failed.
     goto :error
 ) else (
-    echo ✅ Success! Program compiled and placed at: %OUTPUT_DIR%\%OUTPUT_FILENAME%
+    echo ✅ Success! Program compiled for %TARGET_OS% and placed at: %OUTPUT_DIR%\%OUTPUT_FILENAME%
 )
 
 goto :eof
